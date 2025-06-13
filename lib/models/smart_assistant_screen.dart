@@ -34,7 +34,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final String _apiUrl =
       "https://chatbot-1064665840424.us-central1.run.app/ask";
 
-
   @override
   void initState() {
     super.initState();
@@ -69,14 +68,16 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _handleSubmitted(String text) async { // <-- إضافة async
+  void _handleSubmitted(String text) async {
+    // <-- إضافة async
     final String messageText = text.trim();
     if (messageText.isEmpty || _isLoading) {
       return;
     }
 
     _textController.clear();
-    final userMessage = ChatMessage(text: messageText, isUserMessage: true); // إنشاء الرسالة
+    final userMessage =
+        ChatMessage(text: messageText, isUserMessage: true); // إنشاء الرسالة
 
     setState(() {
       _messages.add(userMessage); // إضافة رسالة المستخدم
@@ -84,7 +85,8 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
-    await ChatStorageHelper.saveMessages(_messages); // <-- حفظ المحادثة بعد إضافة رسالة المستخدم
+    await ChatStorageHelper.saveMessages(
+        _messages); // <-- حفظ المحادثة بعد إضافة رسالة المستخدم
 
     _getBotResponse(messageText);
   }
@@ -96,15 +98,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final response = await http
           .post(
-        Uri.parse(_apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-          'accept': 'application/json',
-        },
-        body: jsonEncode(<String, String>{
-          'text': userMessage,
-        }),
-      )
+            Uri.parse(_apiUrl),
+            headers: <String, String>{
+              'Content-Type': 'application/json; charset=UTF-8',
+              'accept': 'application/json',
+            },
+            body: jsonEncode(<String, String>{
+              'text': userMessage,
+            }),
+          )
           .timeout(const Duration(seconds: 45));
 
       if (mounted) {
@@ -116,7 +118,8 @@ class _ChatScreenState extends State<ChatScreen> {
               responseBody['text'] ??
               responseBody['message'] ??
               'لم أجد إجابة واضحة في الرد.';
-          botMessage = ChatMessage(text: botReply, isUserMessage: false); // إنشاء رسالة البوت
+          botMessage = ChatMessage(
+              text: botReply, isUserMessage: false); // إنشاء رسالة البوت
         } else {
           String errorBody = '';
           try {
@@ -124,7 +127,8 @@ class _ChatScreenState extends State<ChatScreen> {
           } catch (e) {
             errorBody = response.reasonPhrase ?? 'خطأ غير معروف';
           }
-          botMessage = ChatMessage( // إنشاء رسالة الخطأ
+          botMessage = ChatMessage(
+            // إنشاء رسالة الخطأ
             text: 'حدث خطأ ${response.statusCode}: $errorBody',
             isUserMessage: false,
             isError: true,
@@ -134,7 +138,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } on TimeoutException catch (_) {
       if (mounted) {
-        botMessage = ChatMessage( // إنشاء رسالة الخطأ
+        botMessage = ChatMessage(
+          // إنشاء رسالة الخطأ
           text: 'انتهت مهلة الاتصال بالخادم. يرجى المحاولة مرة أخرى.',
           isUserMessage: false,
           isError: true,
@@ -143,7 +148,8 @@ class _ChatScreenState extends State<ChatScreen> {
       print('API Error: Request timed out');
     } catch (e) {
       if (mounted) {
-        botMessage = ChatMessage( // إنشاء رسالة الخطأ
+        botMessage = ChatMessage(
+          // إنشاء رسالة الخطأ
           text: 'حدث خطأ غير متوقع أثناء الاتصال: $e',
           isUserMessage: false,
           isError: true,
@@ -155,11 +161,13 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _isLoading = false;
           if (botMessage != null) {
-            _messages.add(botMessage!); // إضافة رسالة البوت أو الخطأ إلى القائمة
+            _messages
+                .add(botMessage!); // إضافة رسالة البوت أو الخطأ إلى القائمة
           }
         });
         if (botMessage != null) {
-          await ChatStorageHelper.saveMessages(_messages); // <-- حفظ المحادثة بعد إضافة رسالة البوت/الخطأ
+          await ChatStorageHelper.saveMessages(
+              _messages); // <-- حفظ المحادثة بعد إضافة رسالة البوت/الخطأ
         }
       }
       _scrollToBottom();
@@ -168,7 +176,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients && _scrollController.position.hasContentDimensions) {
+      if (_scrollController.hasClients &&
+          _scrollController.position.hasContentDimensions) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
@@ -185,7 +194,9 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('تأكيد الحذف', textDirection: TextDirection.rtl),
-          content: const Text('هل أنت متأكد أنك تريد حذف سجل المحادثة بالكامل؟ هذا الإجراء لا يمكن التراجع عنه.', textDirection: TextDirection.rtl),
+          content: const Text(
+              'هل أنت متأكد أنك تريد حذف سجل المحادثة بالكامل؟ هذا الإجراء لا يمكن التراجع عنه.',
+              textDirection: TextDirection.rtl),
           actions: <Widget>[
             TextButton(
               child: const Text('إلغاء'),
@@ -205,19 +216,21 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _messages.clear();
-          _messages.add(ChatMessage( // إعادة إضافة رسالة الترحيب
+          _messages.add(ChatMessage(
+            // إعادة إضافة رسالة الترحيب
             text: "مرحباً! أنا المساعد الذكي، كيف يمكنني مساعدتك اليوم؟",
             isUserMessage: false,
           ));
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حذف سجل المحادثة بنجاح.', textDirection: TextDirection.rtl)),
+          const SnackBar(
+              content: Text('تم حذف سجل المحادثة بنجاح.',
+                  textDirection: TextDirection.rtl)),
         );
       }
     }
   }
   // ---------------------------------------------------
-
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +251,8 @@ class _ChatScreenState extends State<ChatScreen> {
             textAlign: TextAlign.center,
           ),
           centerTitle: true,
-          actions: [ // <-- إضافة زر لمسح المحادثة
+          actions: [
+            // <-- إضافة زر لمسح المحادثة
             IconButton(
               icon: Icon(Icons.delete_outline, color: appBarTextColor),
               tooltip: 'مسح المحادثة',
@@ -249,25 +263,25 @@ class _ChatScreenState extends State<ChatScreen> {
         body: _isHistoryLoading // <-- عرض مؤشر تحميل أثناء جلب المحادثة
             ? Center(child: CircularProgressIndicator(color: userMessageColor))
             : Column(
-          children: <Widget>[
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(8.0),
-                itemCount: _messages.length + (_isLoading ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (_isLoading && index == _messages.length) {
-                    return _buildTypingIndicator();
-                  }
-                  final message = _messages[index];
-                  return _buildMessageBubble(message);
-                },
+                children: <Widget>[
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: _messages.length + (_isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (_isLoading && index == _messages.length) {
+                          return _buildTypingIndicator();
+                        }
+                        final message = _messages[index];
+                        return _buildMessageBubble(message);
+                      },
+                    ),
+                  ),
+                  Divider(height: 1.0, color: Colors.grey.shade300),
+                  _buildTextComposer(),
+                ],
               ),
-            ),
-            Divider(height: 1.0, color: Colors.grey.shade300),
-            _buildTextComposer(),
-          ],
-        ),
       ),
     );
   }
@@ -279,7 +293,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Row(
       mainAxisAlignment:
-      isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
         Container(
           constraints: BoxConstraints(
@@ -295,7 +309,7 @@ class _ChatScreenState extends State<ChatScreen> {
               topLeft: const Radius.circular(20.0),
               topRight: const Radius.circular(20.0),
               bottomLeft: Radius.circular(isUser ? 0 : 20.0),
-              bottomRight: Radius.circular(isUser ?20.0 : 0),
+              bottomRight: Radius.circular(isUser ? 20.0 : 0),
             ),
             boxShadow: [
               BoxShadow(
@@ -366,16 +380,16 @@ class _ChatScreenState extends State<ChatScreen> {
               enabled: !_isLoading,
               decoration: InputDecoration(
                 hintText:
-                _isLoading ? "يرجى الانتظار..." : "اكتب رسالتك هنا...",
+                    _isLoading ? "يرجى الانتظار..." : "اكتب رسالتك هنا...",
                 hintStyle: TextStyle(
                   color:
-                  _isLoading ? Colors.grey.shade400 : Colors.grey.shade500,
+                      _isLoading ? Colors.grey.shade400 : Colors.grey.shade500,
                   fontFamily: 'Cairo',
                 ),
                 hintTextDirection: TextDirection.rtl,
                 filled: true,
                 fillColor:
-                _isLoading ? Colors.grey.shade50 : Colors.grey.shade100,
+                    _isLoading ? Colors.grey.shade50 : Colors.grey.shade100,
                 contentPadding: const EdgeInsets.symmetric(
                   vertical: 10.0,
                   horizontal: 20.0,
@@ -416,8 +430,7 @@ class _ChatScreenState extends State<ChatScreen> {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap:
-              _isLoading
+              onTap: _isLoading
                   ? null
                   : () => _handleSubmitted(_textController.text),
               child: const Padding(
@@ -431,7 +444,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-
 
 class ThreeDotsLoadingIndicator extends StatefulWidget {
   const ThreeDotsLoadingIndicator({super.key});
@@ -525,8 +537,7 @@ class _ThreeDotsLoadingIndicatorState extends State<ThreeDotsLoadingIndicator>
       animation: _controller,
       builder: (context, child) {
         return Row(
-          mainAxisAlignment:
-          MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Transform.translate(
               offset: Offset(0, _animation1.value),

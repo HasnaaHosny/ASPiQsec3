@@ -568,7 +568,7 @@ class ApiService {
   static Future<String?> classifyAnswerWithModel(String rawText) async {
     // ... (existing code) ...
     const String modelPredictEndpoint =
-        "https://arabic-response-api-869138074073.us-central1.run.app/predict";
+        "https://chatbot-869138074073.us-central1.run.app/predict";
     final url = Uri.parse(modelPredictEndpoint);
     final headers = {
       'Content-Type': 'application/json',

@@ -69,7 +69,7 @@ Future<void> main() async {
     await NotificationManager.flutterLocalNotificationsPlugin.show(
       0,
       'مرحبًا بك!',
-      'شكرًا لتثبيت التطبيق.',
+      'شكرًا لتثبيت تطبيق ASPIQ.',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'app_channel_id',
