@@ -32,6 +32,9 @@ import 'package:myfinalpro/services/bloc_observer.dart';
 import 'package:myfinalpro/widget/page_route_names.dart';
 import 'package:myfinalpro/widget/routes_generator.dart';
 import 'package:myfinalpro/services/Api_services.dart'; // <-- *** 2. استيراد ApiService ***
+import 'package:myfinalpro/services/notification_manager.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +52,38 @@ Future<void> main() async {
     print("BlocObserver Initialized.");
   } catch (e) {
     print("Error initializing BlocObserver: $e");
+  }
+
+  // Initialize local notifications
+  await NotificationManager.initializeLocalNotifications();
+  // Request iOS permissions
+  await NotificationManager.flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>()
+      ?.requestPermissions(alert: true, badge: true, sound: true);
+
+  // Send a welcome notification only once after install
+  final prefs = await SharedPreferences.getInstance();
+  final hasSentWelcome = prefs.getBool('welcome_notification_sent') ?? false;
+  if (!hasSentWelcome) {
+    await NotificationManager.flutterLocalNotificationsPlugin.show(
+      0,
+      'مرحبًا بك!',
+      'شكرًا لتثبيت التطبيق.',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'app_channel_id',
+          'App Notifications',
+          channelDescription: 'Notifications from the app',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: true,
+          icon: 'ic_stat_logo',
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+    await prefs.setBool('welcome_notification_sent', true);
   }
 
   // --- الخطوة 4: تشغيل التطبيق ---

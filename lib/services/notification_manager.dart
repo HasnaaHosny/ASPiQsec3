@@ -1,9 +1,11 @@
 // lib/services/notification_manager.dart
 import 'dart:convert';
-import 'package:audioplayers/audioplayers.dart'; // <-- إضافة جديدة
+import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_item.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationManager {
   static const String _notificationsKey =
@@ -14,6 +16,8 @@ class NotificationManager {
       'three_month_test_notif_sent_flag_v2';
 
   static final AudioPlayer _audioPlayer = AudioPlayer(); // <-- إضافة جديدة
+  static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   static Future<void> _playNotificationSound() async {
     // <-- إضافة جديدة
@@ -62,6 +66,69 @@ class NotificationManager {
         "NotificationManager: Saved ${notifications.length} total notifications.");
   }
 
+  static Future<void> initializeLocalNotifications() async {
+    // Request notification permissions
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    // Request permissions for Android 13 and above
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImplementation != null) {
+        await androidImplementation.requestNotificationsPermission();
+      }
+    }
+
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_stat_logo');
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  static Future<void> _showDeviceNotification(NotificationItem item) async {
+    try {
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        'app_channel_id',
+        'App Notifications',
+        channelDescription: 'Notifications from the app',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        icon: 'ic_stat_logo', // Use the custom notification icon
+      );
+      const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+          DarwinNotificationDetails(); // iOS uses app icon by default
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics,
+      );
+      await flutterLocalNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000, // unique notification id
+        item.title,
+        null, // or a subtitle/message
+        platformChannelSpecifics,
+      );
+      debugPrint(
+          'NotificationManager: Device notification sent for: \'${item.title}\'');
+    } catch (e, s) {
+      debugPrint('NotificationManager: ERROR sending device notification: $e');
+      debugPrint('Stacktrace: $s');
+    }
+  }
+
   static Future<void> addOrUpdateNotification(NotificationItem newItem,
       {bool playSound = true}) async {
     List<NotificationItem> currentNotifications =
@@ -103,6 +170,7 @@ class NotificationManager {
 
     if (playSound && isTrulyNew && newItem.isActive) {
       _playNotificationSound();
+      _showDeviceNotification(newItem);
     }
   }
 
