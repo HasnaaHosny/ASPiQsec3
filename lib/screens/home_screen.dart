@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final GlobalKey<NotificationIconState> _notificationIconKey =
       GlobalKey<NotificationIconState>();
-  static const sessionCooldownDuration = Duration(days: 2);
+  static const sessionCooldownDuration = Duration(seconds: 10);
 
   @override
   void initState() {
