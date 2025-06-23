@@ -1,4 +1,3 @@
-// lib/models/notification_item.dart
 import 'package:flutter/foundation.dart';
 
 enum NotificationType {
@@ -7,6 +6,7 @@ enum NotificationType {
   sessionReady,
   monthlyTestAvailable,
   threeMonthTestAvailable,
+  systemMessage, // <-- *** أضف هذا السطر ***
 }
 
 class NotificationItem {
@@ -15,7 +15,7 @@ class NotificationItem {
   final DateTime createdAt;
   final NotificationType type;
   bool isActive;
-  bool isRead; // <-- إضافة جديدة
+  bool isRead;
 
   String get timeAgoDisplay => formatTimeAgo(createdAt);
 
@@ -25,7 +25,7 @@ class NotificationItem {
     required this.createdAt,
     required this.type,
     this.isActive = true,
-    this.isRead = false, // <-- القيمة الافتراضية false
+    this.isRead = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -34,7 +34,7 @@ class NotificationItem {
     'createdAt': createdAt.toIso8601String(),
     'type': type.toString(),
     'isActive': isActive,
-    'isRead': isRead, // <-- إضافة جديدة
+    'isRead': isRead,
   };
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
@@ -65,30 +65,11 @@ class NotificationItem {
       createdAt: parsedCreatedAt,
       type: parsedType,
       isActive: json['isActive'] as bool? ?? true,
-      isRead: json['isRead'] as bool? ?? false, // <-- إضافة جديدة مع قيمة افتراضية
-    );
-  }
-
-  NotificationItem copyWith({
-    String? id,
-    String? title,
-    DateTime? createdAt,
-    NotificationType? type,
-    bool? isActive,
-    bool? isRead, // <-- إضافة جديدة
-  }) {
-    return NotificationItem(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      createdAt: createdAt ?? this.createdAt,
-      type: type ?? this.type,
-      isActive: isActive ?? this.isActive,
-      isRead: isRead ?? this.isRead, // <-- إضافة جديدة
+      isRead: json['isRead'] as bool? ?? false,
     );
   }
 }
 
-// ... دالة formatTimeAgo تبقى كما هي
 String formatTimeAgo(DateTime dateTime) {
   final now = DateTime.now();
   final difference = now.difference(dateTime);

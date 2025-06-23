@@ -5,6 +5,9 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+#include <file_selector_windows/file_selector_windows.h>
+#include <image_picker_windows/image_picker_windows_plugin_c_api.h>
+
 int APIENTRY
 wWinMain(_In_
 HINSTANCE instance, _In_opt_
@@ -44,6 +47,8 @@ return
 EXIT_FAILURE;
 }
 window.SetQuitOnClose(true);
+
+RegisterPlugins(window.GetRegistrar());
 
 ::MSG msg;
 while (

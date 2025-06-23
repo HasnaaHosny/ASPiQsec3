@@ -19,6 +19,20 @@ import 'package:myfinalpro/test3months/test_group_model.dart';
 import '../monthly_test/monthly_test_response.dart';
 import 'package:myfinalpro/models/answer_model.dart';
 
+
+import'package:myfinalpro/sec3/session/simple_message_response.dart';
+import 'package:myfinalpro/sec3/session/type3_session_response.dart';
+
+import 'package:myfinalpro/models/notification_item.dart';
+import 'package:myfinalpro/services/notification_manager.dart';
+
+import 'package:myfinalpro/sec3/test/section3_test_group.dart';
+
+import 'package:myfinalpro/sec3/review/session_list_model_v3.dart';
+
+
+
+
 class ApiService {
   final Dio _dio;
   static const String baseUrl = 'http://aspiq.runasp.net/api';
@@ -1899,4 +1913,336 @@ class ApiService {
       return false;
     }
   }
+
+
+
+
+ // --- *** دالة جديدة لجلب جلسات النوع الثالث *** ---
+ // في ملف services/Api_services.dart
+// ...
+
+// --- *** النسخة النهائية مع التنظيف الدفاعي للمفاتيح *** ---
+
+
+
+// --- *** الدالة المعدلة *** ---
+static Future<dynamic> getType3Session(String jwtToken) async {
+    final uri = Uri.parse('$baseUrl/Type3Sessions/type3session');
+    debugPrint("API Call: GET $uri");
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $jwtToken',
+        },
+      ).timeout(const Duration(seconds: 20));
+
+      final responseBody = utf8.decode(response.bodyBytes);
+      debugPrint("API Response Status: ${response.statusCode}");
+      debugPrint("API Response Body: $responseBody");
+
+      Map<String, dynamic>? data;
+      try {
+        if (responseBody.isNotEmpty) {
+          data = json.decode(responseBody);
+        }
+      } catch (e) {
+        throw Exception('فشل في تحليل استجابة الخادم.');
+      }
+
+      if (data == null) {
+        throw Exception('استجابة فارغة من الخادم.');
+      }
+
+      final cleanKeys = data.keys.map((key) => key.trim()).toSet();
+
+      if (cleanKeys.contains('details')) {
+        debugPrint("Success: Found 'details' key. Parsing as full session.");
+        await NotificationManager.deactivateNotificationsByType(NotificationType.systemMessage);
+        return Type3SessionResponse.fromJson(data);
+      } 
+      else if (cleanKeys.contains('message')) {
+        debugPrint("Success: Found 'message' key. Parsing as simple message.");
+        final cleanData = { for (var entry in data.entries) entry.key.trim(): entry.value };
+        final messageResponse = SimpleMessageResponse.fromJson(cleanData);
+        
+        // --- *** هذا هو المنطق الجديد والمعدل *** ---
+        String notificationTitle;
+        
+        // 1. تحقق إذا كان هناك عنوان للجلسة في الاستجابة
+        if (messageResponse.sessionTitle != null && messageResponse.sessionTitle!.isNotEmpty) {
+          // 2. إذا وجد، قم بإنشاء الرسالة المخصصة
+          notificationTitle = "الرجاء إنهاء اختبار جلسة '${messageResponse.sessionTitle}'";
+        } else {
+          // 3. إذا لم يوجد، استخدم الرسالة العامة من الخادم
+          notificationTitle = messageResponse.message;
+        }
+
+        final newNotification = NotificationItem(
+          id: 'system_message_${DateTime.now().millisecondsSinceEpoch}',
+          title: notificationTitle, // <-- استخدام العنوان المخصص
+          createdAt: DateTime.now(),
+          type: NotificationType.systemMessage,
+        );
+        
+        await NotificationManager.addOrUpdateNotification(newNotification, playSound: true);
+        
+        return messageResponse; // لا نغير ما يتم إرجاعه للواجهة
+      } 
+      else {
+        throw Exception("محتوى الاستجابة غير متوقع. رمز الحالة: ${response.statusCode}");
+      }
+      
+    } on TimeoutException {
+      throw Exception('انتهت مهلة الطلب، يرجى المحاولة مرة أخرى.');
+    } on SocketException {
+       throw Exception('حدث خطأ في الشبكة، يرجى التحقق من اتصالك بالإنترنت.');
+    } catch (e) {
+      debugPrint("Error in getType3Session: $e");
+      rethrow;
+    }
+  }
+
+/*static Future<dynamic> getType3Session(String jwtToken) async {
+  final uri = Uri.parse('http://aspiq.runasp.net/api/Type3Sessions/type3session');
+  debugPrint("API Call: GET $uri");
+
+  try {
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $jwtToken',
+      },
+    ).timeout(const Duration(seconds: 20));
+
+    final responseBody = utf8.decode(response.bodyBytes);
+    debugPrint("API Response Status: ${response.statusCode}");
+    debugPrint("API Response Body: $responseBody");
+
+    Map<String, dynamic>? data;
+    try {
+      if (responseBody.isNotEmpty) {
+        data = json.decode(responseBody);
+      }
+    } catch (e) {
+      debugPrint("Could not parse JSON from response body: $responseBody");
+      throw Exception('فشل في تحليل استجابة الخادم.');
+    }
+
+    if (data == null) {
+      throw Exception('استجابة فارغة من الخادم.');
+    }
+
+    // --- *** المنطق الجديد والمبسط والصحيح *** ---
+    
+    // نقوم بإنشاء نسخة من المفاتيح بعد تنظيفها من المسافات البيضاء
+    final cleanKeys = data.keys.map((key) => key.trim()).toSet();
+
+    // هل الاستجابة هي جلسة كاملة؟
+    if (cleanKeys.contains('details')) {
+        debugPrint("Success: Found 'details' key. Parsing as full session.");
+        return Type3SessionResponse.fromJson(data);
+    } 
+    // هل الاستجابة هي أي نوع من الرسائل؟
+    // *** هذا هو السطر الذي تم تعديله ليكون دفاعيًا ***
+    else if (cleanKeys.contains('message')) {
+        debugPrint("Success: Found 'message' key. Parsing as simple message.");
+        
+        // قد تكون المشكلة أيضًا في الموديل، لذا سنقوم بتمرير نسخة نظيفة من البيانات
+        final cleanData = {
+          for (var entry in data.entries)
+            entry.key.trim(): entry.value
+        };
+        return SimpleMessageResponse.fromJson(cleanData);
+    } 
+    // إذا لم تكن جلسة ولا رسالة
+    else {
+      throw Exception("محتوى الاستجابة غير متوقع. رمز الحالة: ${response.statusCode}");
+    }
+    
+  } on TimeoutException {
+    throw Exception('انتهت مهلة الطلب، يرجى المحاولة مرة أخرى.');
+  } on SocketException {
+     throw Exception('حدث خطأ في الشبكة، يرجى التحقق من اتصالك بالإنترنت.');
+  } catch (e) {
+    debugPrint("Error in getType3Session: $e");
+    // أعد رمي الخطأ ليتم التعامل معه في الواجهة
+    rethrow;
+  }
+}*/
+
+
+
+ // --- *** دالة جديدة لجلب اختبار القسم الثالث *** ---
+  static Future<dynamic> getSection3TestGroup(String jwtToken) async {
+    final uri = Uri.parse('$baseUrl/Type3Sessions/section-3-test-group');
+    debugPrint("API Call: GET $uri");
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $jwtToken'},
+      ).timeout(const Duration(seconds: 20));
+
+      final responseBody = utf8.decode(response.bodyBytes);
+      debugPrint("API Response Status: ${response.statusCode}");
+      debugPrint("API Response Body: $responseBody");
+
+      Map<String, dynamic>? data;
+      if (responseBody.isNotEmpty) {
+        data = json.decode(responseBody);
+      }
+
+      if (data == null) throw Exception('Empty response from server.');
+
+      // تحقق إذا كانت الاستجابة تحتوي على تفاصيل اختبار صالح
+      if (data.containsKey('details')) {
+        return Section3TestGroup.fromJson(data);
+      } 
+      // تحقق إذا كانت الاستجابة رسالة (مثل "لا يوجد اختبار متاح")
+      else if (data.containsKey('Message') || data.containsKey('message')) {
+        return SimpleMessageResponse.fromJson({
+            'message': data['Message'] ?? data['message'],
+        });
+      } 
+      // لأي بنية أخرى غير متوقعة
+      else {
+        throw Exception('Unexpected response structure.');
+      }
+    } catch (e) {
+      debugPrint("Error in getSection3TestGroup: $e");
+      rethrow;
+    }
+  }
+
+
+
+ // --- *** قم بإضافة هذه الدالة هنا *** ---
+  static Future<bool> relevelSection3(String token, int sessionId, String more) async {
+    final uri = Uri.parse('$baseUrl/Type3Sessions/relevel');
+    debugPrint("API Call: POST $uri with sessionId: $sessionId, more: $more");
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'sessionId': sessionId, 'more': more}),
+      );
+      debugPrint("Relevel response status: ${response.statusCode}");
+      // طلبات POST الناجحة غالبًا ما تعود بـ 200 (OK) أو 204 (No Content)
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint("Error in relevelSection3: $e");
+      return false; // أرجع false في حالة حدوث أي خطأ
+    }
+  }
+
+
+  // --- *** دالة جديدة لجلب كل جلسات المراجعة *** ---
+  static Future<List<SessionV3>> getChildSessionsAll3(String jwtToken) async {
+    final uri = Uri.parse('$baseUrl/SessionController/get-child-sessions_all3');
+    debugPrint("API Call: GET $uri");
+    try {
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $jwtToken'},
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return sessionsV3FromJson(utf8.decode(response.bodyBytes));
+      } else {
+        // رمي استثناء ليتم التعامل معه في الواجهة
+        throw Exception('Failed to load review sessions. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint("Error in getChildSessionsAll3: $e");
+      rethrow; // إعادة رمي الخطأ
+    }
+
+  }
+
+
+ static Future<String?> analyzeVideo(String token, File videoFile) async {
+  final uri = Uri.parse('https://video-analyzer-79880788701.us-central1.run.app/analyze');
+  try {
+    var request = http.MultipartRequest('POST', uri)
+      // --- *** تعديل: قم بتعطيل هذا السطر *** ---
+      // ..headers['Authorization'] = 'Bearer $token' 
+      ..files.add(await http.MultipartFile.fromPath(
+        'file',
+        videoFile.path,
+        contentType: MediaType('video', 'mp4'),
+      ));
+
+    var streamedResponse = await request.send().timeout(const Duration(minutes: 2));
+    var response = await http.Response.fromStream(streamedResponse);
+
+    debugPrint("Analyze Video Status: ${response.statusCode}");
+    debugPrint("Analyze Video Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      return decoded['result'] as String?;
+    } else {
+      return null;
+    }
+  } catch (e) {
+    debugPrint("Error analyzing video: $e");
+    return null;
+  }
+}
+  // --- دالة جديدة لـ relevel-all ---
+  static Future<bool> relevelAllSection3(String token, int sessionId) async {
+    final uri = Uri.parse('$baseUrl/Type3Sessions/relevel-all');
+    debugPrint("API Call: POST $uri with sessionId: $sessionId");
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'sessionId': sessionId}),
+      );
+      debugPrint("Relevel All response status: ${response.statusCode}");
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint("Error in relevelAllSection3: $e");
+      return false;
+    }
+  }
+
+   static Future<bool> addSection3Comment(String token, int sessionId, String more) async {
+    // لاحظ أننا نستخدم المسار الجديد للتقارير
+    final uri = Uri.parse('$baseUrl/Reports/add-comment3'); 
+    debugPrint("API Call: POST $uri with Session_ID: $sessionId, more: $more");
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        // انتبه جيدًا لأسماء الحقول المطلوبة في الـ API
+        body: json.encode({
+          'Session_ID': sessionId, // حسب طلبك
+          'more': more
+        }),
+      );
+
+      debugPrint("Add Comment V3 response status: ${response.statusCode}");
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint("Error in addSection3Comment: $e");
+      return false; // أرجع false في حالة حدوث أي خطأ
+    }
+  }
+
+
 } // نهاية الكلاس ApiService

@@ -12,9 +12,10 @@ dependencies:
     sdk: flutter
   flutter_localizations: # Added for localization, common to have
     sdk: flutter
-  intl: ^0.20.2 # موجود بالفعل، جيد!
+  intl: ^0.19.0 # موجود بالفعل، جيد!
 
   video_player: ^2.8.2
+  webview_flutter: ^4.7.0
   font_awesome_flutter: ^10.6.0
   smooth_page_indicator: ^1.1.0
   flutter_native_splash: ^2.3.2
