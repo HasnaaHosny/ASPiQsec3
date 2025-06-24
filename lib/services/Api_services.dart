@@ -2167,35 +2167,50 @@ static Future<dynamic> getType3Session(String jwtToken) async {
   }
 
 
- static Future<String?> analyzeVideo(String token, File videoFile) async {
-  final uri = Uri.parse('https://video-analyzer-79880788701.us-central1.run.app/analyze');
-  try {
-    var request = http.MultipartRequest('POST', uri)
-      // --- *** تعديل: قم بتعطيل هذا السطر *** ---
-      // ..headers['Authorization'] = 'Bearer $token' 
-      ..files.add(await http.MultipartFile.fromPath(
-        'file',
-        videoFile.path,
-        contentType: MediaType('video', 'mp4'),
-      ));
+static Future<String?> analyzeVideo(File videoFile, String expectedAction) async {
+    final uri = Uri.parse('https://video-analyzer-145596954220.us-central1.run.app/validate');
+    try {
+      var request = http.MultipartRequest('POST', uri)
+        ..files.add(await http.MultipartFile.fromPath(
+          'file',
+          videoFile.path,
+          contentType: MediaType('video', 'mp4'),
+        ))
+        ..fields['expected_action'] = expectedAction;
 
-    var streamedResponse = await request.send().timeout(const Duration(minutes: 2));
-    var response = await http.Response.fromStream(streamedResponse);
+      var streamedResponse = await request.send().timeout(const Duration(minutes: 2));
+      var response = await http.Response.fromStream(streamedResponse);
 
-    debugPrint("Analyze Video Status: ${response.statusCode}");
-    debugPrint("Analyze Video Body: ${response.body}");
+      debugPrint("Analyze Video Status: ${response.statusCode}");
+      debugPrint("Analyze Video Body: ${response.body}");
 
-    if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
-      return decoded['result'] as String?;
-    } else {
+      // الحالة الناجحة
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return decoded['result'] as String?;
+      } 
+      // --- المنطق الجديد للتعامل مع الأخطاء التي لها رسالة واضحة ---
+      else {
+        try {
+          // نحاول قراءة رسالة الخطأ من الـ body
+          final decoded = json.decode(response.body);
+          if (decoded is Map<String, dynamic> && decoded.containsKey('error')) {
+            // إذا وجدنا رسالة خطأ، نرجعها لكي يتم التعامل معها
+            return decoded['error'] as String?; 
+          }
+        } catch (e) {
+          // إذا فشلت قراءة رسالة الخطأ، نعتبره فشل تقني عام
+          debugPrint("Could not parse error body: $e");
+          return null;
+        }
+        // إذا كان هناك خطأ ولكن بدون رسالة واضحة في الـ body
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Exception while analyzing video: $e");
       return null;
     }
-  } catch (e) {
-    debugPrint("Error analyzing video: $e");
-    return null;
   }
-}
   // --- دالة جديدة لـ relevel-all ---
   static Future<bool> relevelAllSection3(String token, int sessionId) async {
     final uri = Uri.parse('$baseUrl/Type3Sessions/relevel-all');

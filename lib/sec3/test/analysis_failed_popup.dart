@@ -1,10 +1,14 @@
+// lib/sec3/test/analysis_failed_popup.dart
+
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 // Enum لتحديد اختيار المستخدم من النافذة
 enum RetryOption { retry, cancel }
 
-Future<RetryOption?> showAnalysisFailedPopup(BuildContext context) async {
+// --- *** تم تعديل الدالة لتقبل رسالة مخصصة *** ---
+Future<RetryOption?> showAnalysisFailedPopup(BuildContext context,
+    {String? message}) async {
   final AudioPlayer audioPlayer = AudioPlayer();
 
   audioPlayer.play(AssetSource('audio/error_sound.mp3')).catchError((error) {
@@ -18,7 +22,8 @@ Future<RetryOption?> showAnalysisFailedPopup(BuildContext context) async {
       return PopScope(
         canPop: false,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -26,40 +31,40 @@ Future<RetryOption?> showAnalysisFailedPopup(BuildContext context) async {
               SizedBox(width: 10),
               Text(
                 'فشل التحليل',
-                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontFamily: 'Cairo', fontWeight: FontWeight.bold),
               ),
             ],
           ),
-          content: const Text(
-            'فشل في تحليل الفيديو و حاول مره اخري ب فيديو بصيغة mp4', // تم تعديل النص ليتوافق مع الصورة
+          // --- *** استخدام الرسالة المخصصة أو رسالة افتراضية *** ---
+          content: Text(
+            message ??
+                'فشل في تحليل الفيديو. يرجى المحاولة مرة أخرى بفيديو واضح وبصيغة MP4.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
+            style: const TextStyle(fontFamily: 'Cairo', fontSize: 16),
           ),
-          // --- *** هذا هو الجزء الذي تم تعديله *** ---
           actions: <Widget>[
-            Column( // 1. نلف الأزرار في عمود
-              crossAxisAlignment: CrossAxisAlignment.stretch, // 2. نجعل الأزرار تمتد بعرض العمود
-              mainAxisSize: MainAxisSize.min, // ليأخذ العمود أقل مساحة ممكنة
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // زر المحاولة مرة أخرى
                 ElevatedButton.icon(
                   icon: const Icon(Icons.refresh),
-                  label: const Text('المحاولة مرة أخرى', style: TextStyle(fontFamily: 'Cairo')),
+                  label: const Text('المحاولة مرة أخرى',
+                      style: TextStyle(fontFamily: 'Cairo')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xff2C73D9),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30), // لجعله أكثر دائرية
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   onPressed: () {
                     Navigator.of(dialogContext).pop(RetryOption.retry);
                   },
                 ),
-                const SizedBox(height: 8), // مسافة بين الزرين
-
-                // زر الإلغاء
+                const SizedBox(height: 8),
                 TextButton(
                   onPressed: () {
                     Navigator.of(dialogContext).pop(RetryOption.cancel);
@@ -72,8 +77,8 @@ Future<RetryOption?> showAnalysisFailedPopup(BuildContext context) async {
               ],
             )
           ],
-          // --- *** نهاية الجزء المعدل *** ---
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 24.0),
         ),
       );

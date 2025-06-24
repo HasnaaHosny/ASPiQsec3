@@ -2,6 +2,10 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+
+// --- !!! استيراد جديد: تأكد من أن هذا هو المسار الصحيح لشاشتك الرئيسية !!! ---
+import 'package:myfinalpro/screens/home_screen.dart'; // <--- قد تحتاج لتعديل هذا المسار
+
 import 'package:myfinalpro/login/login_view.dart';
 // --- استيراد الملفات اللازمة للإشعارات ---
 import 'package:myfinalpro/models/notification_item.dart';
@@ -266,7 +270,17 @@ class _SocialSkillsScreenState extends State<SocialSkillsScreen> {
           backgroundColor: Colors.grey[100],
           elevation: 0,
           iconTheme: const IconThemeData(color: primaryBlue),
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
+          // --- *** هذا هو الجزء الذي تم تعديله *** ---
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              // بدلاً من الرجوع للخلف، ننتقل مباشرة إلى الشاشة الرئيسية ونمسح ما قبلها
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+                (route) => false,
+              );
+            },
+          ),
         ),
         backgroundColor: Colors.grey[100],
         body: _isLoading

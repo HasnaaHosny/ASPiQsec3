@@ -56,88 +56,103 @@ class _Section3TestManagerScreenState extends State<Section3TestManagerScreen> {
     }
   }
 
-  // --- *** تم تعديل هذه الدالة لتشمل السيناريوهات الثلاثة *** ---
+  // --- *** تم تعديل هذه الدالة لتستخدم if/else if لتكون أكثر مرونة *** ---
   Future<void> _handlePracticalAnswer(File videoFile) async {
     setState(() => _currentPhase = TestPhase.finished);
 
-    String? analysisResult;
-    try {
-      analysisResult = await ApiService.analyzeVideo(widget.jwtToken, videoFile);
-    } catch (e) {
-      debugPrint("Error in analyzeVideo API call: $e");
-      analysisResult = null;
-    }
+    final analysisResult = await ApiService.analyzeVideo(
+        videoFile, widget.testGroup.groupNameEnglish);
 
-    // السيناريو 1: فشل تقني في الاتصال بـ API التحليل
-    if (analysisResult == null) {
-      debugPrint("Technical failure in video analysis (API returned null).");
-      _handleAnalysisFailure();
-      return; // الخروج من الدالة
-    }
+    if (!mounted) return;
 
-    // السيناريو 2: إجابة عملية صحيحة
-    if (analysisResult == widget.testGroup.groupNameEnglish) {
+    // استخدام if/else if للتعامل مع الحالات المختلفة بمرونة أكبر
+    if (analysisResult == "Yes") {
       debugPrint("Practical test PASSED.");
       await showSuccessPopup(context, () {
-        _finalizeAndNavigate(); // ننتقل لتقييم الجزء النظري
+        _finalizeAndNavigate();
       });
-    }
-    // السيناريو 3: حالة خاصة عندما يرجع النموذج "No"
-    else if (analysisResult == "No") {
-      debugPrint("Analysis result is 'No'. Treating as a retryable failure.");
-      _handleAnalysisFailure(); // نعرض نافذة إعادة المحاولة فقط، بدون تسجيل فشل
-    }
-    // السيناريو 4: أي إجابة خاطئة أخرى (مثل "Don't know")
-    else {
-      debugPrint("Practical test FAILED. User's answer: '$analysisResult', Expected: '${widget.testGroup.groupNameEnglish}'");
-      
-      // تنفيذ إجراءات الفشل الكامل
-      await ApiService.relevelAllSection3(widget.jwtToken, widget.testGroup.sessionId);
-      await ApiService.addSection3Comment(widget.jwtToken, widget.testGroup.sessionId, "0");
+    } else if (analysisResult == "No") {
+      debugPrint("Practical test FAILED. The model returned 'No'.");
+      await ApiService.relevelAllSection3(
+          widget.jwtToken, widget.testGroup.sessionId);
+      await ApiService.addSection3Comment(
+          widget.jwtToken, widget.testGroup.sessionId, "0");
       
       await showErrorPopup(context, () {
-        _navigateToFinalScreen(false); // الانتقال لشاشة النهاية بنتيجة "فشل"
+        _navigateToFinalScreen(false);
       });
+    } else if (analysisResult == "Video is too short") {
+      debugPrint("Analysis failed: Video is too short.");
+      await _handleAnalysisFailure(
+        customMessage: 'مدة الفيديو قصيرة جدًا. يرجى تسجيل فيديو أطول بوضوح ثم المحاولة مرة أخرى.',
+      );
+    } 
+    // --- *** هذا هو التعديل الأساسي: استخدام startsWith *** ---
+    else if (analysisResult != null && analysisResult.startsWith("Gemini blocked")) {
+      debugPrint("Analysis failed: Content blocked by service (Invalid format).");
+      await _handleAnalysisFailure(
+        customMessage: 'هذا الفيديو غير صالح. يرجى المحاولة مرة أخرى بفيديو بصيغة MP4.',
+      );
+    } 
+    else if (analysisResult == null) {
+      debugPrint("Technical failure in video analysis (API returned null or failed).");
+      await _handleAnalysisFailure(
+        customMessage: 'حدث خطأ في الاتصال. يرجى التحقق من اتصالك بالإنترنت ثم المحاولة مرة أخرى.',
+      );
+    } 
+    // --- الحالة الافتراضية لأي خطأ آخر ---
+    else {
+      debugPrint("Practical test FAILED with unexpected response: '$analysisResult'");
+      await _handleAnalysisFailure(
+        customMessage: 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.',
+      );
     }
   }
-  // --- *** نهاية الجزء المعدل *** ---
 
-  Future<void> _handleAnalysisFailure() async {
+  Future<void> _handleAnalysisFailure({String? customMessage}) async {
     if (!mounted) return;
-    final userChoice = await showAnalysisFailedPopup(context);
-    
+
+    final userChoice =
+        await showAnalysisFailedPopup(context, message: customMessage);
+
     if (userChoice == RetryOption.retry) {
       setState(() => _currentPhase = TestPhase.practical);
     } else {
       _navigateToHome();
     }
   }
-
+  
   Future<void> _finalizeAndNavigate() async {
-    bool theoreticalTestPassed = _correctAnswersCount >= widget.testGroup.level;
-    debugPrint("Theoretical test result: ${theoreticalTestPassed ? "PASSED" : "FAILED"} (Correct: $_correctAnswersCount, Required: ${widget.testGroup.level})");
+    bool theoreticalTestPassed =
+        _correctAnswersCount >= widget.testGroup.level;
+    debugPrint(
+        "Theoretical test result: ${theoreticalTestPassed ? "PASSED" : "FAILED"} (Correct: $_correctAnswersCount, Required: ${widget.testGroup.level})");
 
     if (theoreticalTestPassed) {
       // نجاح كلي
-      await ApiService.markTestGroupDone(widget.jwtToken, widget.testGroup.groupId);
-      final apiService = ApiService(); 
+      await ApiService.markTestGroupDone(
+          widget.jwtToken, widget.testGroup.groupId);
+      final apiService = ApiService();
       await apiService.markSessionDone(widget.testGroup.sessionId);
       _navigateToFinalScreen(true);
     } else {
       // فشل نظري
       for (final more in _incorrectMores) {
-        await ApiService.relevelSection3(widget.jwtToken, widget.testGroup.sessionId, more);
-        await ApiService.addSection3Comment(widget.jwtToken, widget.testGroup.sessionId, more);
+        await ApiService.relevelSection3(
+            widget.jwtToken, widget.testGroup.sessionId, more);
+        await ApiService.addSection3Comment(
+            widget.jwtToken, widget.testGroup.sessionId, more);
       }
       _navigateToFinalScreen(false);
     }
   }
-  
+
   void _navigateToFinalScreen(bool didPass) {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => EndTestScreenV3(testPassed: didPass)),
+        MaterialPageRoute(
+            builder: (context) => EndTestScreenV3(testPassed: didPass)),
       );
     }
   }
@@ -176,7 +191,11 @@ class _Section3TestManagerScreenState extends State<Section3TestManagerScreen> {
               children: [
                 CircularProgressIndicator(color: Colors.white),
                 SizedBox(height: 20),
-                Text("جاري تحليل الفيديو...", style: TextStyle(color: Colors.white, fontSize: 18, fontFamily: 'Cairo')),
+                Text("جاري تحليل الفيديو...",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontFamily: 'Cairo')),
               ],
             ),
           ),
